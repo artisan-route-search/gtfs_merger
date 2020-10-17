@@ -81,6 +81,9 @@ func load_table(path string,table_name string,replace_ids map[string]map[string]
 
 			// Replace id column
 			if str != ""{
+				if column_name == "from_stop_id" || column_name == "to_stop_id"{
+					column_name = "stop_id"
+				}
 				if _,ok := id_columns[column_name];ok{
 					if _,ok2 := replace_ids[column_name][str];!ok2{
 						uuidObj, _ := uuid.NewUUID()
@@ -126,6 +129,7 @@ func integration_csvs(file_names []string, outname string){
 	}
 
 	file_counter := -1
+	iswrite := false
 	for _,path := range file_names{
 		file, err := os.Open(path)
 		if err != nil {
@@ -149,9 +153,16 @@ func integration_csvs(file_names []string, outname string){
 				continue
 			}
 			w.Write(line)
+			iswrite = true
 		}
 	}
 	w.Flush()
+	f.Close()
+	if !iswrite{
+		if err := os.Remove(outname); err != nil {
+			fmt.Println(err)
+		}
+	}
 }
 
 func initialization(){
@@ -169,7 +180,7 @@ func initialization(){
 	fields["calendar"]				= []string{"service_id","monday","tuesday","wednesday","thursday","friday","saturday","sunday","start_date","end_date"}
 	fields["calendar_dates"]  = []string{"service_id","date","exception_type"}
 	fields["fare_rules"]			= []string{"fare_id","route_id","origin_id","destination_id","contains_id"}
-	fields["fare_attributes"] = []string{"fare_id","price","currency_type","payment_method","transfer"}
+	fields["fare_attributes"] = []string{"fare_id","price","currency_type","payment_method","transfer","transfer_duration"}
 	fields["shapes"]  				= []string{"shape_id","shape_pt_lat","shape_pt_lon","shape_pt_sequence","shape_dist_traveled"}
 	fields["translations"]  	= []string{"trans_id","lang","translation"}
 	fields["feed_info"]  			= []string{"feed_publisher_name","feed_publisher_url","feed_lang","feed_start_date","feed_end_date","feed_version"}
