@@ -5,14 +5,21 @@ import (
 	"encoding/csv"
 	"os"
 	"log"
+	"io"
+	"sync"
+	"strconv"
+	"strings"
+	"io/ioutil"
+	"path/filepath"
+	"archive/zip"
 	"github.com/google/uuid"
 )
 
 var fields map[string][]string
 var id_columns map[string]bool
-var replace_ids map[string]map[string]string
+var id_column_list []string
 
-func load_table(path string,table_name string){
+func load_table(path string,table_name string,replace_ids map[string]map[string]string){
 	// Open read table file
 	rf, rerr := os.Open(path + "/" + table_name + ".txt")
 	if rerr != nil {
@@ -79,21 +86,28 @@ func load_table(path string,table_name string){
 	writer.Flush()
 }
 
-func main(){
-
-	fields = map[string][]string{}
+func replace_gtfs_ids(path string){
 
 	table_names 		:= []string{"agency","routes","trips","stops","stop_times","calendar","calendar_dates","fare_rules","fare_attributes","shapes","translations","feed_info","frequencies","transfers"}
-	id_column_list	:= []string{"agency_id","route_id","trip_id","stop_id","service_id","fare_id","shape_id","trans_id"}
 
-	replace_ids = map[string]map[string]string{}
-	id_columns	= map[string]bool{}
+	replace_ids := map[string]map[string]string{}
 
 	for _,v := range id_column_list{
-		id_columns[v] = true
 		replace_ids[v] = map[string]string{}
 	}
 
+	for _,table_name := range table_names{
+		load_table(path,table_name,replace_ids)
+	}
+}
+
+func initialization(){
+	id_column_list = []string{"agency_id","route_id","trip_id","stop_id","service_id","fare_id","shape_id","trans_id"}
+	id_columns	= map[string]bool{}
+	for _,v := range id_column_list{
+		id_columns[v] = true
+	}
+	fields 										= map[string][]string{}
 	fields["agency"]					= []string{"agency_id","agency_name","agency_url","agency_timezone","agency_lang","agency_phone","agency_fare_url","agency_email"}
 	fields["routes"]					= []string{"route_id","agency_id","route_short_name","route_long_name","route_desc","route_type","route_url","route_color","route_text_color"}
 	fields["trips"]						= []string{"trip_id","route_id","service_id","trip_headsign","trip_short_name","directon_id","block_id","shape_id","wheelchair_accesible","bikes_allowed"}
@@ -108,15 +122,82 @@ func main(){
 	fields["feed_info"]  			= []string{"feed_publisher_name","feed_publisher_url","feed_lang","feed_start_date","feed_end_date","feed_version"}
 	fields["frequencies"]  		= []string{"trip_id","start_time","end_time","headway_secs","exact_times"}
 	fields["transfers"]  			= []string{"from_stop_id","to_stop_id","transfer_type","min_transfer_time"}
+}
 
-	fmt.Println("start")
+func main(){
 
-	path := "gtfs"
+	initialization()
 
-	// load_table(path,"frequencies")
-	// return
-
-	for _,table_name := range table_names{
-		load_table(path,table_name)
+	// Unzip all gtfs
+	gtfspaths := []string{}
+	paths,_ := dirwalk("./GTFS")
+	if err := os.Mkdir("./unzip/", 0777); err != nil {
+		fmt.Println(err)
 	}
+	wg := sync.WaitGroup{}
+	for index,path := range paths {
+		if(!strings.HasSuffix(path, ".zip")){
+			continue
+		}
+		fmt.Println(path)
+		if err := os.Mkdir("./unzip/"+strconv.Itoa(index), 0777); err != nil {
+			fmt.Println(err)
+		}
+		gtfspaths = append(gtfspaths,"./unzip/"+strconv.Itoa(index))
+		wg.Add(1)
+		go func(path string,index int){
+			defer wg.Done()
+			unzip(path,"./unzip/"+strconv.Itoa(index))
+			replace_gtfs_ids("./unzip/"+strconv.Itoa(index))
+		}(path,index)
+	}
+	wg.Wait()
+}
+
+func dirwalk(dir string) ([]string,[]string) {
+	files, err := ioutil.ReadDir(dir)
+	if err != nil {
+		panic(err)
+	}
+
+	var paths,file_names []string
+	for _, file := range files {
+		paths = append(paths, filepath.Join(dir, file.Name()))
+		file_names = append(file_names,file.Name())
+	}
+	return paths,file_names
+}
+
+func unzip(src, dest string) error {
+	r, err := zip.OpenReader(src)
+	if err != nil {
+		return err
+	}
+	defer r.Close()
+
+	for _, f := range r.File {
+		rc, err := f.Open()
+		if err != nil {
+			return err
+		}
+		defer rc.Close()
+
+		path := filepath.Join(dest, f.Name)
+		if f.FileInfo().IsDir() {
+			os.MkdirAll(path, f.Mode())
+		} else {
+			f, err := os.OpenFile(
+					path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, f.Mode())
+			if err != nil {
+					return err
+			}
+			defer f.Close()
+
+			_, err = io.Copy(f, rc)
+			if err != nil {
+					return err
+			}
+		}
+	}
+	return nil
 }
