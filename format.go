@@ -81,7 +81,7 @@ func load_table(path string,table_name string,replace_ids map[string]map[string]
 
 			// Replace id column
 			if str != ""{
-				if column_name == "from_stop_id" || column_name == "to_stop_id"{
+				if column_name == "from_stop_id" || column_name == "to_stop_id" || column_name == "parent_station"{
 					column_name = "stop_id"
 				}
 				if _,ok := id_columns[column_name];ok{
@@ -104,15 +104,13 @@ func load_table(path string,table_name string,replace_ids map[string]map[string]
 
 func replace_gtfs_ids(path string){
 
-	table_names 		:= []string{"agency","routes","trips","stops","stop_times","calendar","calendar_dates","fare_rules","fare_attributes","shapes","translations","feed_info","frequencies","transfers"}
-
 	replace_ids := map[string]map[string]string{}
 
 	for _,v := range id_column_list{
 		replace_ids[v] = map[string]string{}
 	}
 
-	for _,table_name := range table_names{
+	for table_name,_ := range fields{
 		load_table(path,table_name,replace_ids)
 	}
 }
@@ -180,7 +178,7 @@ func initialization(){
 	fields["calendar"]				= []string{"service_id","monday","tuesday","wednesday","thursday","friday","saturday","sunday","start_date","end_date"}
 	fields["calendar_dates"]  = []string{"service_id","date","exception_type"}
 	fields["fare_rules"]			= []string{"fare_id","route_id","origin_id","destination_id","contains_id"}
-	fields["fare_attributes"] = []string{"fare_id","price","currency_type","payment_method","transfer","transfer_duration"}
+	fields["fare_attributes"] = []string{"fare_id","price","currency_type","payment_method","transfers","agency_id","transfer_duration"}
 	fields["shapes"]  				= []string{"shape_id","shape_pt_lat","shape_pt_lon","shape_pt_sequence","shape_dist_traveled"}
 	fields["translations"]  	= []string{"trans_id","lang","translation"}
 	fields["feed_info"]  			= []string{"feed_publisher_name","feed_publisher_url","feed_lang","feed_start_date","feed_end_date","feed_version"}
