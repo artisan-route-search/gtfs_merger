@@ -210,13 +210,18 @@ func main(){
 		fmt.Println(err)
 	}
 
+	wg.Add(len(fields))
 	for k,_ := range fields{
-		files := []string{}
-		for _,v := range gtfspaths{
-			files = append(files,v + "/replace_" + k + ".txt")
-		}
-		integration_csvs(files,"onegtfs/"+k+".txt")
+		go func(k string){
+			defer wg.Done()
+			files := []string{}
+			for _,v := range gtfspaths{
+				files = append(files,v + "/replace_" + k + ".txt")
+			}
+			integration_csvs(files,"onegtfs/"+k+".txt")
+		}(k)
 	}
+	wg.Wait()
 }
 
 func dirwalk(dir string) ([]string,[]string) {
