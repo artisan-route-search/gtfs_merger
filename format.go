@@ -7,6 +7,7 @@ import (
 	"log"
 	"io"
 	"sync"
+	"bufio"
 	"strconv"
 	"strings"
 	"io/ioutil"
@@ -19,6 +20,18 @@ var fields map[string][]string
 var id_columns map[string]bool
 var id_column_list []string
 
+func newCsvReader(r io.Reader) *csv.Reader {
+	br := bufio.NewReader(r)
+	bs, err := br.Peek(3)
+	if err != nil {
+		return csv.NewReader(br)
+	}
+	if bs[0] == 0xEF && bs[1] == 0xBB && bs[2] == 0xBF {
+		br.Discard(3)
+	}
+	return csv.NewReader(br)
+}
+
 func load_table(path string,table_name string,replace_ids map[string]map[string]string){
 	// Open read table file
 	rf, rerr := os.Open(path + "/" + table_name + ".txt")
@@ -27,7 +40,7 @@ func load_table(path string,table_name string,replace_ids map[string]map[string]
 		return
 	}
 	defer rf.Close()
-	reader := csv.NewReader(rf)
+	reader := newCsvReader(rf)
 
 	// Open write table file
 	wf, werr := os.Create(path + "/replace_" + table_name + ".txt")
@@ -67,17 +80,21 @@ func load_table(path string,table_name string,replace_ids map[string]map[string]
 			str := line[titles[column_name]]
 
 			// Replace id column
-			if _,ok := id_columns[column_name];ok{
-				if _,ok := replace_ids[column_name][str];!ok{
-					uuidObj, _ := uuid.NewUUID()
-					uuidstr := uuidObj.String()
-					replace_ids[column_name][str] = uuidstr
-					str = uuidstr
-				} else {
-					str = replace_ids[column_name][str]
-				}
+			if str != ""{
+				if _,ok := id_columns[column_name];ok{
+					if _,ok2 := replace_ids[column_name][str];!ok2{
+						fmt.Println(column_name)
+						fmt.Println(titles[column_name])
+						fmt.Println(str)
+						uuidObj, _ := uuid.NewUUID()
+						uuidstr := uuidObj.String()
+						replace_ids[column_name][str] = uuidstr
+						str = uuidstr
+					} else {
+						str = replace_ids[column_name][str]
+					}
+				}	
 			}
-
 			// fmt.Print(str," ")
 			outline = append(outline,str)
 		}
@@ -152,7 +169,7 @@ func initialization(){
 	fields["routes"]					= []string{"route_id","agency_id","route_short_name","route_long_name","route_desc","route_type","route_url","route_color","route_text_color"}
 	fields["trips"]						= []string{"trip_id","route_id","service_id","trip_headsign","trip_short_name","directon_id","block_id","shape_id","wheelchair_accesible","bikes_allowed"}
 	fields["stops"]						= []string{"stop_id","stop_code","stop_name","stop_desc","stop_lat","stop_lon","zone_id","stop_url","location_type","parent_station","stop_timezone","wheelchair_boarding","platform_code"}
-	fields["stop_times"]			= []string{"trip_id","arrival_time","depature_time","stop_id","stop_sequence","stop_headsign","pickup_type","timepoint"}
+	fields["stop_times"]			= []string{"trip_id","arrival_time","departure_time","stop_id","stop_sequence","stop_headsign","pickup_type","timepoint"}
 	fields["calendar"]				= []string{"service_id","monday","tuesday","wednesday","thursday","friday","saturday","sunday","start_date","end_date"}
 	fields["calendar_dates"]  = []string{"service_id","date","exception_type"}
 	fields["fare_rules"]			= []string{"fare_id","route_id","origin_id","destination_id","contains_id"}
