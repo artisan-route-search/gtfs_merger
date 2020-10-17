@@ -83,9 +83,6 @@ func load_table(path string,table_name string,replace_ids map[string]map[string]
 			if str != ""{
 				if _,ok := id_columns[column_name];ok{
 					if _,ok2 := replace_ids[column_name][str];!ok2{
-						fmt.Println(column_name)
-						fmt.Println(titles[column_name])
-						fmt.Println(str)
 						uuidObj, _ := uuid.NewUUID()
 						uuidstr := uuidObj.String()
 						replace_ids[column_name][str] = uuidstr
@@ -95,7 +92,6 @@ func load_table(path string,table_name string,replace_ids map[string]map[string]
 					}
 				}	
 			}
-			// fmt.Print(str," ")
 			outline = append(outline,str)
 		}
 		writer.Write(outline)
@@ -196,7 +192,6 @@ func main(){
 		if(!strings.HasSuffix(path, ".zip")){
 			continue
 		}
-		fmt.Println(path)
 		if err := os.Mkdir("./unzip/"+strconv.Itoa(index), 0777); err != nil {
 			fmt.Println(err)
 		}
