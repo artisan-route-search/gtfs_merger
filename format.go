@@ -180,7 +180,7 @@ func initialization(){
 	fields["fare_rules"]			= []string{"fare_id","route_id","origin_id","destination_id","contains_id"}
 	fields["fare_attributes"] = []string{"fare_id","price","currency_type","payment_method","transfers","agency_id","transfer_duration"}
 	fields["shapes"]  				= []string{"shape_id","shape_pt_lat","shape_pt_lon","shape_pt_sequence","shape_dist_traveled"}
-	fields["translations"]  	= []string{"trans_id","lang","translation"}
+	// fields["translations"]  	= []string{"trans_id","lang","translation"}
 	fields["feed_info"]  			= []string{"feed_publisher_name","feed_publisher_url","feed_lang","feed_start_date","feed_end_date","feed_version"}
 	fields["frequencies"]  		= []string{"trip_id","start_time","end_time","headway_secs","exact_times"}
 	fields["transfers"]  			= []string{"from_stop_id","to_stop_id","transfer_type","min_transfer_time"}
