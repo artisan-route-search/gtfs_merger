@@ -4,9 +4,12 @@ import (
 	"fmt"
 	"encoding/csv"
 	"os"
+	"github.com/google/uuid"
 )
 
 var fields map[string][]string
+var id_columns map[string]bool
+var replace_ids map[string]map[string]string
 
 func load_table(path string,table_name string){
 	file, err := os.Open(path + "/" + table_name + ".txt")
@@ -42,8 +45,22 @@ func load_table(path string,table_name string){
 		// Load records
 		line = append(line,"")
 
-		for _,v := range fields[table_name]{
-			fmt.Print(line[titles[v]]," ")
+		for _,column_name := range fields[table_name]{
+			str := line[titles[column_name]]
+
+			// Replace id column
+			if _,ok := id_columns[column_name];ok{
+				if _,ok := replace_ids[column_name][str];!ok{
+					uuidObj, _ := uuid.NewUUID()
+					uuidstr := uuidObj.String()
+					replace_ids[column_name][str] = uuidstr
+					str = uuidstr
+				} else {
+					str = replace_ids[column_name][str]
+				}
+			}
+
+			fmt.Print(str," ")
 		}
 		fmt.Println("")
 	}
@@ -52,7 +69,17 @@ func load_table(path string,table_name string){
 func main(){
 
 	fields = map[string][]string{}
-	table_names := []string{"agency","routes","trips","stops","stop_times","calendar","calendar_dates","fare_rules","fare_attributes","shapes","translations","feed_info","frequencies","transfers"}
+
+	table_names 		:= []string{"agency","routes","trips","stops","stop_times","calendar","calendar_dates","fare_rules","fare_attributes","shapes","translations","feed_info","frequencies","transfers"}
+	id_column_list	:= []string{"agency_id","route_id","trip_id","stop_id","service_id","fare_id","shape_id","trans_id"}
+
+	replace_ids = map[string]map[string]string{}
+	id_columns	= map[string]bool{}
+
+	for _,v := range id_column_list{
+		id_columns[v] = true
+		replace_ids[v] = map[string]string{}
+	}
 
 	fields["agency"]					= []string{"agency_id","agency_name","agency_url","agency_timezone","agency_lang","agency_phone","agency_fare_url","agency_email"}
 	fields["routes"]					= []string{"route_id","agency_id","route_short_name","route_long_name","route_desc","route_type","route_url","route_color","route_text_color"}
