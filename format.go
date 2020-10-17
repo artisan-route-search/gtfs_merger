@@ -2,146 +2,81 @@ package main
 
 import (
 	"fmt"
+	"encoding/csv"
+	"os"
 )
 
-type Agency struct{
-	Agency_id string
-	Agency_name string
-	Agency_url string
-	Agency_timezone string
-	Agency_lang string
-	Agency_phone string
-	Agency_fare_url string
-	Agency_email string
-}
+var fields map[string][]string
 
-type Feed_info struct{
-	Feed_publisher_name string
-	Feed_publisher_url string
-	Feed_lang string
-	Feed_start_date string
-	Feed_end_date string
-	Feed_version string
-}
+func load_table(path string,table_name string){
+	file, err := os.Open(path + "/" + table_name + ".txt")
+	if err != nil {
+		fmt.Println("["+path + "/" + table_name + ".txt] is not found")
+		return
+		// panic(err)
+	}
+	defer file.Close()
 
-type translations struct{
-	Trans_id string
-	Lang string
-	Translation string
-}
+	counter := -1
+	reader := csv.NewReader(file)
+	titles := map[string]int{}
 
-type Route struct{
-	Route_id string
-	Agency_id string
-	Route_short_name string
-	Route_long_name string
-	Route_desc string
-	Route_type string
-	Route_url string
-	Route_color string
-	Route_text_color string
-}
+	for {
+		counter++
+		line, er := reader.Read()
+		if er != nil {
+			break
+		}
+		if counter==0{
+			for k,v := range line{
+				titles[v]=k
+			}
+			for _,v := range fields[table_name]{
+				if _,ok := titles[v]; !ok{
+					titles[v] = len(line)
+				}
+			}
+			continue
+		}
 
-type Trip struct{
-	Trip_id string
-	Route_id string
-	Service_id string
-	Trip_headsign string
-	Trip_short_name string
-	Directon_id string
-	Block_id string
-	Shape_id string
-	Wheelchair_accesible string
-	bikes_allowed string
-}
+		// Load records
+		line = append(line,"")
 
-type Frequency struct{
-	Trip_id string
-	Start_time string
-	End_time string
-	Headway_secs string
-	exact_times string
-}
-
-type Calender struct{
-	Service_id string
-	Monday string
-	Tuesday string
-	Wednesday string
-	Thursday string
-	Friday string
-	Saturday string
-	Sunday string
-	start_date string
-	end_date string
-}
-
-type Shape struct{
-	Shape_id string
-	Shape_pt_lat string
-	Shape_pt_lon string
-	Shape_pt_sequence string
-	Shape_dist_traveled string
-}
-
-type Stop_time struct{
-	Trip_id string
-	Arrival_time string
-	Depature_time string
-	Stop_id string
-	Stop_sequence string
-	Stop_headsign string
-	Pickup_type string
-	Shape_dist_travel string
-	timepoint string
-}
-
-type Calendar_date struct{
-	Service_id string
-	Date string
-	Exception_type string
-}
-
-type Stop struct{
-	Stop_id string
-	Stop_code string
-	Stop_name string
-	Stop_desc string
-	Stop_lat string
-	Stop_lon string
-	Zone_id string
-	Stop_url string
-	Location_type string
-	Parent_station string
-	Stop_timezone string
-	Wheelchair_boarding string
-	platform_code string
-}
-
-type Transfer struct{
-	From_stop_id string
-	To_stop_id string
-	Transfer_type string
-	Min_transfer_time string
-}
-
-type Fare_attributes struct{
-	Fare_id string
-	Price string
-	Currency_type string
-	Payment_method string
-	Transfer string
-	Transfer_duration string
-}
-
-type Fare_rule struct{
-	Fare_id string
-	Route_id string
-	Origin_id string
-	Destination_id string
-	contains_id string
+		for _,v := range fields[table_name]{
+			fmt.Print(line[titles[v]]," ")
+		}
+		fmt.Println("")
+	}
 }
 
 func main(){
+
+	fields = map[string][]string{}
+	table_names := []string{"agency","routes","trips","stops","stop_times","calendar","calendar_dates","fare_rules","fare_attributes","shapes","translations","feed_info","frequencies","transfers"}
+
+	fields["agency"]					= []string{"agency_id","agency_name","agency_url","agency_timezone","agency_lang","agency_phone","agency_fare_url","agency_email"}
+	fields["routes"]					= []string{"route_id","agency_id","route_short_name","route_long_name","route_desc","route_type","route_url","route_color","route_text_color"}
+	fields["trips"]						= []string{"trip_id","route_id","service_id","trip_headsign","trip_short_name","directon_id","block_id","shape_id","wheelchair_accesible","bikes_allowed"}
+	fields["stops"]						= []string{"stop_id","stop_code","stop_name","stop_desc","stop_lat","stop_lon","zone_id","stop_url","location_type","parent_station","stop_timezone","wheelchair_boarding","platform_code"}
+	fields["stop_times"]			= []string{"trip_id","arrival_time","depature_time","stop_id","stop_sequence","stop_headsign","pickup_type","timepoint"}
+	fields["calendar"]				= []string{"service_id","monday","tuesday","wednesday","thursday","friday","saturday","sunday","start_date","end_date"}
+	fields["calendar_dates"]  = []string{"service_id","date","exception_type"}
+	fields["fare_rules"]			= []string{"fare_id","route_id","origin_id","destination_id","contains_id"}
+	fields["fare_attributes"] = []string{"fare_id","price","currency_type","payment_method","transfer"}
+	fields["shapes"]  				= []string{"shape_id","shape_pt_lat","shape_pt_lon","shape_pt_sequence","shape_dist_traveled"}
+	fields["translations"]  	= []string{"trans_id","lang","translation"}
+	fields["feed_info"]  			= []string{"feed_publisher_name","feed_publisher_url","feed_lang","feed_start_date","feed_end_date","feed_version"}
+	fields["frequencies"]  		= []string{"trip_id","start_time","end_time","headway_secs","exact_times"}
+	fields["transfers"]  			= []string{"from_stop_id","to_stop_id","transfer_type","min_transfer_time"}
+
 	fmt.Println("start")
+
+	path := "gtfs"
+
+	// load_table(path,"frequencies")
+	// return
+
+	for _,table_name := range table_names{
+		load_table(path,table_name)
+	}
 }
