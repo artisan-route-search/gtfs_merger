@@ -101,6 +101,46 @@ func replace_gtfs_ids(path string){
 	}
 }
 
+func integration_csvs(file_names []string, outname string){
+	f, err := os.Create(outname)
+	if err != nil {
+		log.Fatal(err)
+	}
+	w := csv.NewWriter(f)
+
+	if err := w.Error(); err != nil {
+			log.Fatal(err)
+	}
+
+	file_counter := -1
+	for _,path := range file_names{
+		file, err := os.Open(path)
+		if err != nil {
+			continue
+		}
+		defer file.Close()
+		file_counter++
+
+		reader := csv.NewReader(file)
+		counter := -1
+		for {
+			counter++
+			line, err := reader.Read()
+			if err != nil {
+				if counter == 0{
+					file_counter--
+				}
+				break
+			}
+			if counter == 0 && file_counter != 0{
+				continue
+			}
+			w.Write(line)
+		}
+	}
+	w.Flush()
+}
+
 func initialization(){
 	id_column_list = []string{"agency_id","route_id","trip_id","stop_id","service_id","fare_id","shape_id","trans_id"}
 	id_columns	= map[string]bool{}
@@ -152,6 +192,19 @@ func main(){
 		}(path,index)
 	}
 	wg.Wait()
+
+	// Merge GTFS
+	if err := os.Mkdir("./onegtfs/", 0777); err != nil {
+		fmt.Println(err)
+	}
+
+	for k,_ := range fields{
+		files := []string{}
+		for _,v := range gtfspaths{
+			files = append(files,v + "/replace_" + k + ".txt")
+		}
+		integration_csvs(files,"onegtfs/"+k+".txt")
+	}
 }
 
 func dirwalk(dir string) ([]string,[]string) {
