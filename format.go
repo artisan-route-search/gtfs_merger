@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"encoding/csv"
 	"os"
+	"log"
 	"github.com/google/uuid"
 )
 
@@ -12,16 +13,25 @@ var id_columns map[string]bool
 var replace_ids map[string]map[string]string
 
 func load_table(path string,table_name string){
-	file, err := os.Open(path + "/" + table_name + ".txt")
-	if err != nil {
+	// Open read table file
+	rf, rerr := os.Open(path + "/" + table_name + ".txt")
+	if rerr != nil {
 		fmt.Println("["+path + "/" + table_name + ".txt] is not found")
 		return
-		// panic(err)
 	}
-	defer file.Close()
+	defer rf.Close()
+	reader := csv.NewReader(rf)
+
+	// Open write table file
+	wf, werr := os.Create(path + "/replace_" + table_name + ".txt")
+	if werr != nil {
+		log.Fatal(werr)
+	}
+	defer wf.Close()
+	writer := csv.NewWriter(wf)
+	writer.Write(fields[table_name])
 
 	counter := -1
-	reader := csv.NewReader(file)
 	titles := map[string]int{}
 
 	for {
@@ -44,6 +54,7 @@ func load_table(path string,table_name string){
 
 		// Load records
 		line = append(line,"")
+		outline := []string{}
 
 		for _,column_name := range fields[table_name]{
 			str := line[titles[column_name]]
@@ -60,10 +71,12 @@ func load_table(path string,table_name string){
 				}
 			}
 
-			fmt.Print(str," ")
+			// fmt.Print(str," ")
+			outline = append(outline,str)
 		}
-		fmt.Println("")
+		writer.Write(outline)
 	}
+	writer.Flush()
 }
 
 func main(){
