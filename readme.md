@@ -6,6 +6,20 @@
 - [Golang](https://golang.org/) ver.1.13以上
 
 ## Usage
+
+### Windows
+1. 複数のGTFSをGTFSディレクトリに配置する。
+2. ``merge_gtfs.exe``を実行
+（GTFS-JPの場合には``merge_gtfs-jp.exe``を実行）
+3. 結合された結果である``GTFS.zip``が生成される
+
+### Linux
+1. 複数のGTFSをGTFSディレクトリに配置する。
+2. ``merge_gtfs``を実行
+（GTFS-JPの場合には``merge_gtfs-jp``を実行）
+3. 結合された結果である``GTFS.zip``が生成される
+
+### go runで実行する場合
 1. 複数のGTFSをGTFSディレクトリに配置する。
 2. ``go run main.go``コマンドを実行
 （GTFS-JPの場合には``go run main.go -e=jp``）
