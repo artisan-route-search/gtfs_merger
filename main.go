@@ -82,9 +82,17 @@ func load_table(path string,table_name string,replace_ids map[string]map[string]
 
 			// Replace id column
 			if str != ""{
-				if column_name == "from_stop_id" || column_name == "to_stop_id" || column_name == "parent_station"{
-					column_name = "stop_id"
+				
+				replace_stop_ids := map[string]string{}
+				replace_stop_ids["from_stop_id"] = "stop_id"
+				replace_stop_ids["to_stop_id"] = "stop_id"
+				replace_stop_ids["parent_station"] = "stop_id"
+				replace_stop_ids["origin_id"] = "zone_id"
+				replace_stop_ids["destination_id"] = "zone_id"
+				if v,ok := replace_stop_ids[column_name];ok{
+					column_name = v
 				}
+
 				if _,ok := id_columns[column_name];ok{
 					if _,ok2 := replace_ids[column_name][str];!ok2{
 						uuidObj, _ := uuid.NewUUID()
@@ -165,7 +173,7 @@ func integration_csvs(file_names []string, outname string){
 }
 
 func initialization(){
-	id_column_list = []string{"agency_id","route_id","trip_id","stop_id","service_id","fare_id","shape_id"}
+	id_column_list = []string{"agency_id","route_id","trip_id","stop_id","service_id","fare_id","zone_id","shape_id"}
 	id_columns	= map[string]bool{}
 	for _,v := range id_column_list{
 		id_columns[v] = true
@@ -187,7 +195,7 @@ func initialization(){
 }
 
 func initialization_jp(){
-	id_column_list = []string{"agency_id","route_id","trip_id","stop_id","service_id","fare_id","shape_id","trans_id","office_id"}
+	id_column_list = []string{"agency_id","route_id","trip_id","stop_id","service_id","fare_id","zone_id","shape_id"}
 	id_columns	= map[string]bool{}
 	for _,v := range id_column_list{
 		id_columns[v] = true
