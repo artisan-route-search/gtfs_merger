@@ -231,6 +231,13 @@ func main(){
 		}(k)
 	}
 	wg.Wait()
+
+	// ZIP
+	filePaths, _ := findfiles("./onegtfs")
+	zipPath := "./GTFS.zip"
+	if err := archive(zipPath, filePaths); err != nil {
+		panic(err)
+	}
 }
 
 func dirwalk(dir string) ([]string,[]string) {
@@ -278,5 +285,96 @@ func unzip(src, dest string) error {
 			}
 		}
 	}
+	return nil
+}
+
+// ZIP
+func findfiles(targetDir string) ([]string, error) {
+
+	var paths []string
+	err := filepath.Walk(targetDir,
+			func(path string, info os.FileInfo, err error) error {
+					rel, err := filepath.Rel(targetDir, path)
+					if err != nil {
+							return err
+					}
+
+					if info.IsDir() {
+							paths = append(paths, fmt.Sprintf("%s/", rel))
+							return nil
+					}
+
+					paths = append(paths, rel)
+
+					return nil
+			})
+
+	if err != nil {
+			return nil, err
+	}
+
+	return paths, nil
+}
+
+func archive(output string, paths []string) error {
+	var compressedFile *os.File
+	var err error
+
+	//ZIPファイル作成
+	if compressedFile, err = os.Create(output); err != nil {
+			return err
+	}
+	defer compressedFile.Close()
+
+	if err := compress(compressedFile, ".", paths); err != nil {
+			return err
+	}
+
+	return nil
+}
+
+func compress(compressedFile io.Writer, targetDir string, files []string) error {
+	w := zip.NewWriter(compressedFile)
+
+	for _, filename := range files {
+			filepath := fmt.Sprintf("%s/%s", targetDir, "./onegtfs/" + filename)
+			info, err := os.Stat(filepath)
+			if err != nil {
+					return err
+			}
+
+			if info.IsDir() {
+					continue
+			}
+
+			file, err := os.Open(filepath)
+			if err != nil {
+					return err
+			}
+			defer file.Close()
+
+			hdr, err := zip.FileInfoHeader(info)
+			if err != nil {
+					return err
+			}
+
+			hdr.Name = filename
+
+			f, err := w.CreateHeader(hdr)
+			if err != nil {
+					return err
+			}
+
+			contents, _ := ioutil.ReadFile(filepath)
+			_, err = f.Write(contents)
+			if err != nil {
+					return err
+			}
+	}
+
+	if err := w.Close(); err != nil {
+			return err
+	}
+
 	return nil
 }
