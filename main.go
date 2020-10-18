@@ -7,6 +7,7 @@ import (
 	"log"
 	"io"
 	"sync"
+	"flag"
 	"bufio"
 	"strconv"
 	"strings"
@@ -164,7 +165,7 @@ func integration_csvs(file_names []string, outname string){
 }
 
 func initialization(){
-	id_column_list = []string{"agency_id","route_id","trip_id","stop_id","service_id","fare_id","shape_id","trans_id"}
+	id_column_list = []string{"agency_id","route_id","trip_id","stop_id","service_id","fare_id","shape_id"}
 	id_columns	= map[string]bool{}
 	for _,v := range id_column_list{
 		id_columns[v] = true
@@ -180,7 +181,32 @@ func initialization(){
 	fields["fare_rules"]			= []string{"fare_id","route_id","origin_id","destination_id","contains_id"}
 	fields["fare_attributes"] = []string{"fare_id","price","currency_type","payment_method","transfers","agency_id","transfer_duration"}
 	fields["shapes"]  				= []string{"shape_id","shape_pt_lat","shape_pt_lon","shape_pt_sequence","shape_dist_traveled"}
-	// fields["translations"]  	= []string{"trans_id","lang","translation"}
+	fields["feed_info"]  			= []string{"feed_publisher_name","feed_publisher_url","feed_lang","feed_start_date","feed_end_date","feed_version"}
+	fields["frequencies"]  		= []string{"trip_id","start_time","end_time","headway_secs","exact_times"}
+	fields["transfers"]  			= []string{"from_stop_id","to_stop_id","transfer_type","min_transfer_time"}
+}
+
+func initialization_jp(){
+	id_column_list = []string{"agency_id","route_id","trip_id","stop_id","service_id","fare_id","shape_id","trans_id","office_id"}
+	id_columns	= map[string]bool{}
+	for _,v := range id_column_list{
+		id_columns[v] = true
+	}
+	fields 										= map[string][]string{}
+	fields["agency"]					= []string{"agency_id","agency_name","agency_url","agency_timezone","agency_lang","agency_phone","agency_fare_url","agency_email"}
+	fields["agency_jp"]				= []string{"agency_id","agency_official_name","agency_zip_number","agency_address","agency_president_pos","agency_president_name"}
+	fields["routes"]					= []string{"route_id","agency_id","route_short_name","route_long_name","route_desc","route_type","route_url","route_color","route_text_color","jp_parent_route_id"}
+	fields["routes_jp"]				= []string{"route_id","route_update_date","origin_stop","via_stop","destination_stop"}
+	fields["trips"]						= []string{"trip_id","route_id","service_id","trip_headsign","trip_short_name","directon_id","block_id","shape_id","wheelchair_accesible","bikes_allowed","jp_trip_desc","jp_trip_desc_symbol","jp_office_id"}
+	fields["office_jp"]				= []string{"office_id","office_name","office_url","office_phone"}
+	fields["stops"]						= []string{"stop_id","stop_code","stop_name","stop_desc","stop_lat","stop_lon","zone_id","stop_url","location_type","parent_station","stop_timezone","wheelchair_boarding","platform_code"}
+	fields["stop_times"]			= []string{"trip_id","arrival_time","departure_time","stop_id","stop_sequence","stop_headsign","pickup_type","timepoint"}
+	fields["calendar"]				= []string{"service_id","monday","tuesday","wednesday","thursday","friday","saturday","sunday","start_date","end_date"}
+	fields["calendar_dates"]  = []string{"service_id","date","exception_type"}
+	fields["fare_rules"]			= []string{"fare_id","route_id","origin_id","destination_id","contains_id"}
+	fields["fare_attributes"] = []string{"fare_id","price","currency_type","payment_method","transfers","agency_id","transfer_duration"}
+	fields["shapes"]  				= []string{"shape_id","shape_pt_lat","shape_pt_lon","shape_pt_sequence","shape_dist_traveled"}
+	fields["translations"]  	= []string{"trans_id","lang","translation"}
 	fields["feed_info"]  			= []string{"feed_publisher_name","feed_publisher_url","feed_lang","feed_start_date","feed_end_date","feed_version"}
 	fields["frequencies"]  		= []string{"trip_id","start_time","end_time","headway_secs","exact_times"}
 	fields["transfers"]  			= []string{"from_stop_id","to_stop_id","transfer_type","min_transfer_time"}
@@ -188,7 +214,14 @@ func initialization(){
 
 func main(){
 
-	initialization()
+	expansion := flag.String("e", "", "expansion")
+	flag.Parse()
+
+	if *expansion == "jp"{
+		initialization_jp()
+	} else {
+		initialization()
+	}
 
 	// Unzip all gtfs
 	gtfspaths := []string{}

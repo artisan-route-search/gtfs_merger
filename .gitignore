@@ -1,4 +1,5 @@
-gtfs
+/GTFS/*
+!/GTFS/readme.md
 unzip
 onegtfs
 GTFS.zip
