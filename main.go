@@ -102,7 +102,11 @@ func load_table(path string,table_name string,replace_ids map[string]map[string]
 					} else {
 						str = replace_ids[column_name][str]
 					}
-				}	
+				}
+
+				if column_name == "feed_lang" || column_name == "agency_lang"{
+					str = strings.ToLower(str)
+				}
 			}
 			outline = append(outline,str)
 		}
