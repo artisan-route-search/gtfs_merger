@@ -50,7 +50,7 @@ func load_table(path string,table_name string,replace_ids map[string]map[string]
 	}
 	defer wf.Close()
 	writer := csv.NewWriter(wf)
-	writer.Write(fields[table_name])
+	writer.Write(append(fields[table_name],"origin_gtfs"))
 
 	counter := -1
 	titles := map[string]int{}
@@ -110,7 +110,7 @@ func load_table(path string,table_name string,replace_ids map[string]map[string]
 			}
 			outline = append(outline,str)
 		}
-		writer.Write(outline)
+		writer.Write(append(outline,path[8:]))
 	}
 	writer.Flush()
 }
@@ -126,6 +126,33 @@ func replace_gtfs_ids(path string){
 	for table_name,_ := range fields{
 		load_table(path,table_name,replace_ids)
 	}
+
+	if err := os.Mkdir("./replace_ids/", 0777); err != nil {
+		fmt.Println(err)
+	}
+	if err := os.Mkdir("./replace_ids/"+path[8:], 0777); err != nil {
+		fmt.Println(err)
+	}
+
+	// replace_idの出力
+	for table_name,original_ids:=range replace_ids{
+		f, err := os.Create("./replace_ids/"+path[8:]+"/rep_"+table_name+".csv")
+		if err != nil {
+			log.Fatal(err)
+		}
+		w := csv.NewWriter(f)
+	
+		if err := w.Error(); err != nil {
+			log.Fatal(err)
+		}
+		
+		w.Write([]string{"original","new"})
+		for o,n:=range original_ids{
+			w.Write([]string{o,n})
+		}
+		w.Flush()
+		f.Close()
+	}
 }
 
 func integration_csvs(file_names []string, outname string){
@@ -136,7 +163,7 @@ func integration_csvs(file_names []string, outname string){
 	w := csv.NewWriter(f)
 
 	if err := w.Error(); err != nil {
-			log.Fatal(err)
+		log.Fatal(err)
 	}
 
 	file_counter := -1
