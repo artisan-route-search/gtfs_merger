@@ -87,8 +87,8 @@ func load_table(path string,table_name string,replace_ids map[string]map[string]
 				replace_stop_ids["from_stop_id"] = "stop_id"
 				replace_stop_ids["to_stop_id"] = "stop_id"
 				replace_stop_ids["parent_station"] = "stop_id"
-				replace_stop_ids["origin_id"] = "zone_id"
-				replace_stop_ids["destination_id"] = "zone_id"
+				replace_stop_ids["origin_id"] = "stop_id"
+				replace_stop_ids["destination_id"] = "stop_id"
 				if v,ok := replace_stop_ids[column_name];ok{
 					column_name = v
 				}
