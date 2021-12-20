@@ -6,7 +6,6 @@ import (
 	"encoding/csv"
 	"flag"
 	"fmt"
-	"github.com/google/uuid"
 	"io"
 	"io/ioutil"
 	"log"
@@ -15,6 +14,9 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+
+	csvtag "github.com/artonge/go-csv-tag/v2"
+	"github.com/google/uuid"
 )
 
 var fields map[string][]string
@@ -252,6 +254,22 @@ func initialization_jp() {
 	fields["transfers"] = []string{"from_stop_id", "to_stop_id", "transfer_type", "min_transfer_time"}
 }
 
+type Translation2 struct {
+	TransID string `csv:"trans_id"`
+	Lang string `csv:"lang"`
+	Translation string `csv:"translation"`
+}
+
+type Translation3 struct {
+	TransID string `csv:"table_name"`
+	// FieldName string `csv:"field_name"`
+	Language string `csv:"language"`
+	Translation string `csv:"translation"`
+	// RecordID string `csv:"record_id"`
+	// RecordSubID string `csv:"record_sub_id"`
+	FieldValue string `csv:"field_value"`
+}
+
 func main() {
 
 	expansion := flag.String("e", "", "expansion")
@@ -281,8 +299,44 @@ func main() {
 		wg.Add(1)
 		go func(path string, index int) {
 			defer wg.Done()
-			unzip(path, "./unzip/"+strconv.Itoa(index))
-			replace_gtfs_ids("./unzip/" + strconv.Itoa(index))
+			dir := "./unzip/"+strconv.Itoa(index)
+			unzip(path, dir)
+			replace_gtfs_ids(dir)
+
+			// translationsの仕様によっては片合わせ
+			translationsColomns := getColumons(dir + "/translations.txt")
+			fmt.Println(translationsColomns)
+			if _,ok:=translationsColomns["trans_id"];ok{
+				if _,ok:=translationsColomns["lang"];ok{
+					if _,ok:=translationsColomns["translation"];ok{
+						// GTFS-JP 第二版仕様
+						fmt.Println("translations.txt is version 2.")
+					}
+				}
+			}
+			if _,ok:=translationsColomns["language"];ok{
+				if _,ok:=translationsColomns["field_name"];ok{
+					if _,ok:=translationsColomns["field_value"];ok{
+						fmt.Println("translations.txt is version 3.")
+						// GTFS-JP 第三版仕様
+						// 第二版仕様にする処理
+						translations2 := []Translation2{}
+						translations3 := []Translation3{}
+
+						csvtag.LoadFromPath(dir + "/translations.txt",&translations3)
+						for _,v := range translations3 {
+							translations2 = append(translations2, Translation2{
+								TransID: v.FieldValue,
+								Translation: v.Translation,
+								Lang: v.Language,
+							})
+						}
+						if err := csvtag.DumpToFile(translations2,dir + "/translations2.txt");err != nil {
+							log.Fatalln(err)
+						}
+					}
+				}
+			}
 		}(path, index)
 	}
 	wg.Wait()
@@ -450,4 +504,30 @@ func compress(compressedFile io.Writer, targetDir string, files []string) error 
 	}
 
 	return nil
+}
+
+func getColumons(filePath string)(translationColumns map[string]bool){
+	translationColumns = map[string]bool{}
+
+	fp, err := os.Open(filePath)
+	if err != nil {
+		// エラー処理
+	}
+	defer fp.Close()
+
+	scanner := bufio.NewScanner(fp)
+
+	for scanner.Scan() {
+		// ここで一行ずつ処理
+		cols := strings.Split(scanner.Text(),",")
+		for _,col := range cols {
+			translationColumns[col] = true
+		}
+		break
+	}
+
+	if err = scanner.Err(); err != nil {
+		return translationColumns
+	}
+	return translationColumns
 }
