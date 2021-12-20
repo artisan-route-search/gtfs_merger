@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	proto "github.com/golang/protobuf/proto"
 	"github.com/MobilityData/gtfs-realtime-bindings/golang/gtfs"
+	proto "github.com/golang/protobuf/proto"
 	"io/ioutil"
 	"log"
 	"net/http"
