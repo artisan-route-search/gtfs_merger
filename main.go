@@ -19,9 +19,13 @@ import (
 	"github.com/google/uuid"
 )
 
-var fields map[string][]string
-var id_columns map[string]bool
-var id_column_list []string
+type Table struct {
+	Name 		string
+	Columns []string
+}
+
+var fields []Table	// GTFSに含まれるファイル一覧
+var id_columns map[string]bool	// uuidで置き換えるIDリスト
 
 func newCsvReader(r io.Reader) *csv.Reader {
 	br := bufio.NewReader(r)
@@ -35,7 +39,16 @@ func newCsvReader(r io.Reader) *csv.Reader {
 	return csv.NewReader(br)
 }
 
-func load_table(path string, table_name string, replace_ids map[string]map[string]string) {
+func GetTableColumns(tables []Table,name string)[]string{
+	for _,v:=range tables{
+		if v.Name == name{
+			return v.Columns
+		}
+	}
+	return []string{}
+}
+
+func load_table(path string, table_name string, replace_ids map[string]map[string]string, replaceColumns map[string]string) {
 	// Open read table file
 	rf, rerr := os.Open(path + "/" + table_name + ".txt")
 	if rerr != nil {
@@ -51,8 +64,11 @@ func load_table(path string, table_name string, replace_ids map[string]map[strin
 		log.Fatal(werr)
 	}
 	defer wf.Close()
+
+	tableColumns := GetTableColumns(fields,table_name)
+
 	writer := csv.NewWriter(wf)
-	writer.Write(append(fields[table_name], "origin_gtfs"))
+	writer.Write(append(tableColumns, "origin_gtfs"))
 
 	counter := -1
 	titles := map[string]int{}
@@ -67,7 +83,7 @@ func load_table(path string, table_name string, replace_ids map[string]map[strin
 			for k, v := range line {
 				titles[v] = k
 			}
-			for _, v := range fields[table_name] {
+			for _, v := range tableColumns {
 				if _, ok := titles[v]; !ok {
 					titles[v] = len(line)
 				}
@@ -79,35 +95,54 @@ func load_table(path string, table_name string, replace_ids map[string]map[strin
 		line = append(line, "")
 		outline := []string{}
 
-		for _, column_name := range fields[table_name] {
+		for _, column_name := range tableColumns {
 			str := line[titles[column_name]]
 
 			// Replace id column
 			if str != "" {
 
-				replace_stop_ids := map[string]string{}
-				replace_stop_ids["from_stop_id"] = "stop_id"
-				replace_stop_ids["to_stop_id"] = "stop_id"
-				replace_stop_ids["parent_station"] = "stop_id"
-				replace_stop_ids["origin_id"] = "stop_id"
-				replace_stop_ids["destination_id"] = "stop_id"
-				if v, ok := replace_stop_ids[column_name]; ok {
-					column_name = v
-				}
-
-				if _, ok := id_columns[column_name]; ok {
-					if _, ok2 := replace_ids[column_name][str]; !ok2 {
-						uuidObj, _ := uuid.NewUUID()
-						uuidstr := uuidObj.String()
-						replace_ids[column_name][str] = uuidstr
-						str = uuidstr
+				// 運賃情報の場合、stop_idとzone_idのどちらか判定する
+				if column_name == "origin_id" || column_name == "destination_id"{
+					if v,ok := replace_ids["zone_id"][str];ok{
+						// zone_idを使って置き換え
+						str = v
+						fmt.Println("use zone_id")
+					} else if v,ok:= replace_ids["stop_id"][str];ok{
+						// stop_idを使って置き換え
+						str = v
+						fmt.Println("use stop_id")
 					} else {
-						str = replace_ids[column_name][str]
+						fmt.Println(str+" is not found in both stop_ids and zone_ids")
 					}
-				}
 
-				if column_name == "feed_lang" || column_name == "agency_lang" {
-					str = strings.ToLower(str)
+				// 運賃情報以外では置き換え対象の場合のみ置き換える
+				} else {
+					if v, ok := replaceColumns[column_name]; ok {
+						column_name = v
+					}
+	
+					if _, ok := id_columns[column_name]; ok {
+						if _, ok2 := replace_ids[column_name][str]; !ok2 {
+							// まだ置き換えたことがないので置き換え
+							if str == "0" {
+								replace_ids[column_name][str] = str
+							} else {
+								uuidObj, _ := uuid.NewUUID()
+								uuidstr := uuidObj.String()
+								replace_ids[column_name][str] = uuidstr
+								if column_name == "zone_id" {
+									fmt.Println(column_name+" is",str,"->",uuidstr)
+								}
+								str = uuidstr	
+							}
+						} else {
+							str = replace_ids[column_name][str]
+						}
+					}
+	
+					if column_name == "feed_lang" || column_name == "agency_lang" {
+						str = strings.ToLower(str)
+					}
 				}
 			}
 			outline = append(outline, str)
@@ -117,16 +152,32 @@ func load_table(path string, table_name string, replace_ids map[string]map[strin
 	writer.Flush()
 }
 
+// // 運賃情報がstop_idにより記載されていればstop_id、zone_idにより記載されていればzone_idを返す
+// func FareIdBase(){}
+
 func replace_gtfs_ids(path string) {
 
 	replace_ids := map[string]map[string]string{}
 
-	for _, v := range id_column_list {
-		replace_ids[v] = map[string]string{}
+	for k, _ := range id_columns {
+		replace_ids[k] = map[string]string{}
 	}
 
-	for table_name, _ := range fields {
-		load_table(path, table_name, replace_ids)
+	replaceColumns := map[string]string{}
+	replaceColumns["from_stop_id"] = "stop_id"
+	replaceColumns["to_stop_id"] = "stop_id"
+	replaceColumns["parent_station"] = "stop_id"
+
+	// 運賃情報がstop_idベースの場合
+	replaceColumns["origin_id"] = "stop_id"
+	replaceColumns["destination_id"] = "stop_id"
+
+	// // 運賃情報がzone_idベースの場合
+	// replaceColumns["origin_id"] = "zone_id"
+	// replaceColumns["destination_id"] = "zone_id"
+
+	for _, v := range fields {
+		load_table(path, v.Name, replace_ids, replaceColumns)
 	}
 
 	if err := os.Mkdir("./replace_ids/", 0777); err != nil {
@@ -206,52 +257,143 @@ func integration_csvs(file_names []string, outname string) {
 }
 
 func initialization() {
-	id_column_list = []string{"agency_id", "route_id", "trip_id", "stop_id", "service_id", "fare_id", "zone_id", "shape_id"}
+	id_column_list := []string{"agency_id", "route_id", "trip_id", "stop_id", "service_id", "fare_id", "zone_id", "shape_id"}
 	id_columns = map[string]bool{}
 	for _, v := range id_column_list {
 		id_columns[v] = true
 	}
-	fields = map[string][]string{}
-	fields["agency"] = []string{"agency_id", "agency_name", "agency_url", "agency_timezone", "agency_lang", "agency_phone", "agency_fare_url", "agency_email"}
-	fields["routes"] = []string{"route_id", "agency_id", "route_short_name", "route_long_name", "route_desc", "route_type", "route_url", "route_color", "route_text_color"}
-	fields["trips"] = []string{"trip_id", "route_id", "service_id", "trip_headsign", "trip_short_name", "directon_id", "block_id", "shape_id", "wheelchair_accesible", "bikes_allowed"}
-	fields["stops"] = []string{"stop_id", "stop_code", "stop_name", "stop_desc", "stop_lat", "stop_lon", "zone_id", "stop_url", "location_type", "parent_station", "stop_timezone", "wheelchair_boarding", "platform_code"}
-	fields["stop_times"] = []string{"trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence", "stop_headsign", "pickup_type", "timepoint"}
-	fields["calendar"] = []string{"service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date"}
-	fields["calendar_dates"] = []string{"service_id", "date", "exception_type"}
-	fields["fare_rules"] = []string{"fare_id", "route_id", "origin_id", "destination_id", "contains_id"}
-	fields["fare_attributes"] = []string{"fare_id", "price", "currency_type", "payment_method", "transfers", "agency_id", "transfer_duration"}
-	fields["shapes"] = []string{"shape_id", "shape_pt_lat", "shape_pt_lon", "shape_pt_sequence", "shape_dist_traveled"}
-	fields["feed_info"] = []string{"feed_publisher_name", "feed_publisher_url", "feed_lang", "feed_start_date", "feed_end_date", "feed_version"}
-	fields["frequencies"] = []string{"trip_id", "start_time", "end_time", "headway_secs", "exact_times"}
-	fields["transfers"] = []string{"from_stop_id", "to_stop_id", "transfer_type", "min_transfer_time"}
-	fields["translations"] = []string{"trans_id", "lang", "translation"}
+	fields = append(fields, Table{
+		Name: "agency",
+		Columns: []string{"agency_id", "agency_name", "agency_url", "agency_timezone", "agency_lang", "agency_phone", "agency_fare_url", "agency_email"},
+	})
+	fields = append(fields, Table{
+		Name: "routes",
+		Columns: []string{"route_id", "agency_id", "route_short_name", "route_long_name", "route_desc", "route_type", "route_url", "route_color", "route_text_color"},
+	})
+	fields = append(fields, Table{
+		Name: "trips",
+		Columns: []string{"trip_id", "route_id", "service_id", "trip_headsign", "trip_short_name", "directon_id", "block_id", "shape_id", "wheelchair_accesible", "bikes_allowed"},
+	})
+	fields = append(fields, Table{
+		Name: "stops",
+		Columns: []string{"stop_id", "stop_code", "stop_name", "stop_desc", "stop_lat", "stop_lon", "zone_id", "stop_url", "location_type", "parent_station", "stop_timezone", "wheelchair_boarding", "platform_code"},
+	})
+	fields = append(fields, Table{
+		Name: "stop_times",
+		Columns: []string{"trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence", "stop_headsign", "pickup_type", "timepoint"},
+	})
+	fields = append(fields, Table{
+		Name: "calendar",
+		Columns: []string{"service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date"},
+	})
+	fields = append(fields, Table{
+		Name: "calendar_dates",
+		Columns: []string{"service_id", "date", "exception_type"},
+	})
+	fields = append(fields, Table{
+		Name: "shapes",
+		Columns: []string{"shape_id", "shape_pt_lat", "shape_pt_lon", "shape_pt_sequence", "shape_dist_traveled"},
+	})
+	fields = append(fields, Table{
+		Name: "feed_info",
+		Columns: []string{"feed_publisher_name", "feed_publisher_url", "feed_lang", "feed_start_date", "feed_end_date", "feed_version"},
+	})
+	fields = append(fields, Table{
+		Name: "frequencies",
+		Columns: []string{"trip_id", "start_time", "end_time", "headway_secs", "exact_times"},
+	})
+	fields = append(fields, Table{
+		Name: "transfers",
+		Columns: []string{"from_stop_id", "to_stop_id", "transfer_type", "min_transfer_time"},
+	})
+	fields = append(fields, Table{
+		Name: "translations",
+		Columns: []string{"trans_id", "lang", "translation"},
+	})
+	fields = append(fields, Table{
+		Name: "fare_rules",
+		Columns: []string{"fare_id", "route_id", "origin_id", "destination_id", "contains_id"},
+	})
+	fields = append(fields, Table{
+		Name: "fare_attributes",
+		Columns: []string{"fare_id", "price", "currency_type", "payment_method", "transfers", "agency_id", "transfer_duration"},
+	})
 }
 
 func initialization_jp() {
-	id_column_list = []string{"agency_id", "route_id", "trip_id", "stop_id", "service_id", "fare_id", "zone_id", "shape_id"}
+	id_column_list := []string{"agency_id", "route_id", "trip_id", "stop_id", "service_id", "fare_id", "zone_id", "shape_id"}
 	id_columns = map[string]bool{}
 	for _, v := range id_column_list {
 		id_columns[v] = true
 	}
-	fields = map[string][]string{}
-	fields["agency"] = []string{"agency_id", "agency_name", "agency_url", "agency_timezone", "agency_lang", "agency_phone", "agency_fare_url", "agency_email"}
-	fields["agency_jp"] = []string{"agency_id", "agency_official_name", "agency_zip_number", "agency_address", "agency_president_pos", "agency_president_name"}
-	fields["routes"] = []string{"route_id", "agency_id", "route_short_name", "route_long_name", "route_desc", "route_type", "route_url", "route_color", "route_text_color", "jp_parent_route_id"}
-	fields["routes_jp"] = []string{"route_id", "route_update_date", "origin_stop", "via_stop", "destination_stop"}
-	fields["trips"] = []string{"trip_id", "route_id", "service_id", "trip_headsign", "trip_short_name", "directon_id", "block_id", "shape_id", "wheelchair_accesible", "bikes_allowed", "jp_trip_desc", "jp_trip_desc_symbol", "jp_office_id"}
-	fields["office_jp"] = []string{"office_id", "office_name", "office_url", "office_phone"}
-	fields["stops"] = []string{"stop_id", "stop_code", "stop_name", "stop_desc", "stop_lat", "stop_lon", "zone_id", "stop_url", "location_type", "parent_station", "stop_timezone", "wheelchair_boarding", "platform_code"}
-	fields["stop_times"] = []string{"trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence", "stop_headsign", "pickup_type", "timepoint"}
-	fields["calendar"] = []string{"service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date"}
-	fields["calendar_dates"] = []string{"service_id", "date", "exception_type"}
-	fields["fare_rules"] = []string{"fare_id", "route_id", "origin_id", "destination_id", "contains_id"}
-	fields["fare_attributes"] = []string{"fare_id", "price", "currency_type", "payment_method", "transfers", "agency_id", "transfer_duration"}
-	fields["shapes"] = []string{"shape_id", "shape_pt_lat", "shape_pt_lon", "shape_pt_sequence", "shape_dist_traveled"}
-	fields["translations"] = []string{"trans_id", "lang", "translation"}
-	fields["feed_info"] = []string{"feed_publisher_name", "feed_publisher_url", "feed_lang", "feed_start_date", "feed_end_date", "feed_version"}
-	fields["frequencies"] = []string{"trip_id", "start_time", "end_time", "headway_secs", "exact_times"}
-	fields["transfers"] = []string{"from_stop_id", "to_stop_id", "transfer_type", "min_transfer_time"}
+	fields = append(fields, Table{
+		Name: "agency",
+		Columns: []string{"agency_id", "agency_name", "agency_url", "agency_timezone", "agency_lang", "agency_phone", "agency_fare_url", "agency_email"},
+	})
+	fields = append(fields, Table{
+		Name: "agency_jp",
+		Columns: []string{"agency_id", "agency_official_name", "agency_zip_number", "agency_address", "agency_president_pos", "agency_president_name"},
+	})
+	fields = append(fields, Table{
+		Name: "routes",
+		Columns: []string{"route_id", "agency_id", "route_short_name", "route_long_name", "route_desc", "route_type", "route_url", "route_color", "route_text_color", "jp_parent_route_id"},
+	})
+	fields = append(fields, Table{
+		Name: "routes_jp",
+		Columns: []string{"route_id", "route_update_date", "origin_stop", "via_stop", "destination_stop"},
+	})
+	fields = append(fields, Table{
+		Name: "trips",
+		Columns: []string{"trip_id", "route_id", "service_id", "trip_headsign", "trip_short_name", "directon_id", "block_id", "shape_id", "wheelchair_accesible", "bikes_allowed", "jp_trip_desc", "jp_trip_desc_symbol", "jp_office_id"},
+	})
+	fields = append(fields, Table{
+		Name: "office_jp",
+		Columns: []string{"office_id", "office_name", "office_url", "office_phone"},
+	})
+	fields = append(fields, Table{
+		Name: "stops",
+		Columns: []string{"stop_id", "stop_code", "stop_name", "stop_desc", "stop_lat", "stop_lon", "zone_id", "stop_url", "location_type", "parent_station", "stop_timezone", "wheelchair_boarding", "platform_code"},
+	})
+	fields = append(fields, Table{
+		Name: "stop_times",
+		Columns: []string{"trip_id", "arrival_time", "departure_time", "stop_id", "stop_sequence", "stop_headsign", "pickup_type", "timepoint"},
+	})
+	fields = append(fields, Table{
+		Name: "calendar",
+		Columns: []string{"service_id", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday", "start_date", "end_date"},
+	})
+	fields = append(fields, Table{
+		Name: "calendar_dates",
+		Columns: []string{"service_id", "date", "exception_type"},
+	})
+	fields = append(fields, Table{
+		Name: "shapes",
+		Columns: []string{"shape_id", "shape_pt_lat", "shape_pt_lon", "shape_pt_sequence", "shape_dist_traveled"},
+	})
+	fields = append(fields, Table{
+		Name: "translations",
+		Columns: []string{"trans_id", "lang", "translation"},
+	})
+	fields = append(fields, Table{
+		Name: "feed_info",
+		Columns: []string{"feed_publisher_name", "feed_publisher_url", "feed_lang", "feed_start_date", "feed_end_date", "feed_version"},
+	})
+	fields = append(fields, Table{
+		Name: "frequencies",
+		Columns: []string{"trip_id", "start_time", "end_time", "headway_secs", "exact_times"},
+	})
+	fields = append(fields, Table{
+		Name: "transfers",
+		Columns: []string{"from_stop_id", "to_stop_id", "transfer_type", "min_transfer_time"},
+	})
+	fields = append(fields, Table{
+		Name: "fare_rules",
+		Columns: []string{"fare_id", "route_id", "origin_id", "destination_id", "contains_id"},
+	})
+	fields = append(fields, Table{
+		Name: "fare_attributes",
+		Columns: []string{"fare_id", "price", "currency_type", "payment_method", "transfers", "agency_id", "transfer_duration"},
+	})
 }
 
 type Translation2 struct {
@@ -275,6 +417,7 @@ func main() {
 	expansion := flag.String("e", "", "expansion")
 	flag.Parse()
 
+	// GTFSかGTFS-JPかの判定
 	if *expansion == "jp" {
 		initialization_jp()
 	} else {
@@ -287,25 +430,32 @@ func main() {
 	if err := os.Mkdir("./unzip/", 0777); err != nil {
 		fmt.Println(err)
 	}
+
+	// GTFS毎にファイルを置き換えていく
 	wg := sync.WaitGroup{}
 	for index, path := range paths {
 		if !strings.HasSuffix(path, ".zip") {
 			continue
 		}
-		if err := os.Mkdir("./unzip/"+strconv.Itoa(index), 0777); err != nil {
+		dir := "./unzip/"+strconv.Itoa(index)
+		if err := os.Mkdir(dir, 0777); err != nil {
 			fmt.Println(err)
 		}
-		gtfspaths = append(gtfspaths, "./unzip/"+strconv.Itoa(index))
+		gtfspaths = append(gtfspaths, dir)
 		wg.Add(1)
-		go func(path string, index int) {
+		go func(originalPath string, destinationPath string) {
 			defer wg.Done()
-			dir := "./unzip/"+strconv.Itoa(index)
-			unzip(path, dir)
-			replace_gtfs_ids(dir)
+
+			// GTFSの展開
+			unzip(originalPath, destinationPath)
+
+			// 運賃情報をzone_idベースかstop_idベースか判定
+
+			// IDの置き換え
+			replace_gtfs_ids(destinationPath)
 
 			// translationsの仕様によっては片合わせ
-			translationsColomns := getColumons(dir + "/translations.txt")
-			fmt.Println(translationsColomns)
+			translationsColomns := getColumons(destinationPath + "/translations.txt")
 			if _,ok:=translationsColomns["trans_id"];ok{
 				if _,ok:=translationsColomns["lang"];ok{
 					if _,ok:=translationsColomns["translation"];ok{
@@ -323,7 +473,7 @@ func main() {
 						translations2 := []Translation2{}
 						translations3 := []Translation3{}
 
-						csvtag.LoadFromPath(dir + "/translations.txt",&translations3)
+						csvtag.LoadFromPath(destinationPath + "/translations.txt",&translations3)
 						for _,v := range translations3 {
 							translations2 = append(translations2, Translation2{
 								TransID: v.FieldValue,
@@ -331,13 +481,13 @@ func main() {
 								Lang: v.Language,
 							})
 						}
-						if err := csvtag.DumpToFile(translations2,dir + "/translations2.txt");err != nil {
+						if err := csvtag.DumpToFile(translations2,destinationPath + "/translations2.txt");err != nil {
 							log.Fatalln(err)
 						}
 					}
 				}
 			}
-		}(path, index)
+		}(path, dir)
 	}
 	wg.Wait()
 
@@ -347,7 +497,7 @@ func main() {
 	}
 
 	wg.Add(len(fields))
-	for k, _ := range fields {
+	for _, v := range fields {
 		go func(k string) {
 			defer wg.Done()
 			files := []string{}
@@ -355,7 +505,7 @@ func main() {
 				files = append(files, v+"/replace_"+k+".txt")
 			}
 			integration_csvs(files, "onegtfs/"+k+".txt")
-		}(k)
+		}(v.Name)
 	}
 	wg.Wait()
 
