@@ -15,7 +15,7 @@ import (
 	"strings"
 	"sync"
 
-	csvtag "github.com/artonge/go-csv-tag/v2"
+	csvtag "github.com/takoyaki-3/go-csv-tag/v3"
 	"github.com/google/uuid"
 )
 

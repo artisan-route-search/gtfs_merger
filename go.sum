@@ -1,8 +1,5 @@
 github.com/MobilityData/gtfs-realtime-bindings v0.0.0-20201112173953-8d4aa381fc0e h1:57Er1SbW5jiOE8xbBWIF7HYHU8uP4rP6i/2p0ijhHds=
 github.com/MobilityData/gtfs-realtime-bindings v0.0.0-20201112173953-8d4aa381fc0e/go.mod h1:bo+EAJ4BOgOw/d7mR+GSgy6ezVGrRD8EasCryJ5BkNg=
-github.com/artonge/go-csv-tag v1.0.0 h1:yaYWPTgSPx0em0q9weWCbOdF6WD/gyp0x/pWkTBel1Y=
-github.com/artonge/go-csv-tag/v2 v2.0.7 h1:15R880S8+SHSKjvCZyNE2r3gNSaS0RQlGuU7s+w2/Fw=
-github.com/artonge/go-csv-tag/v2 v2.0.7/go.mod h1:MhLKePA0uu/+2jUJ4IER31uhRV/0GsIKyrSqSRR7Mkc=
 github.com/golang/protobuf v1.4.0-rc.1/go.mod h1:ceaxUfeHdC40wWswd/P6IGgMaK3YpKi5j83Wpe3EHw8=
 github.com/golang/protobuf v1.4.0-rc.1.0.20200221234624-67d41d38c208/go.mod h1:xKAWHe0F5eneWXFV3EuXVDTCmh+JuBKY0li0aMyXATA=
 github.com/golang/protobuf v1.4.0-rc.2/go.mod h1:LlEzMj4AhA7rCAGe4KMBDvJI+AwstrUpVNzEA03Pprs=
@@ -12,9 +9,13 @@ github.com/golang/protobuf v1.4.3 h1:JjCZWpVbqXDqFVmTfYWEVTMIYrL/NPdPSCHPJ0T/raM
 github.com/golang/protobuf v1.4.3/go.mod h1:oDoupMAO8OvCJWAcko0GGGIgR6R6ocIYbsSw735rRwI=
 github.com/google/go-cmp v0.3.0/go.mod h1:8QqcDgzrUqlUb/G2PQTWiueGozuR1884gddMywk6iLU=
 github.com/google/go-cmp v0.3.1/go.mod h1:8QqcDgzrUqlUb/G2PQTWiueGozuR1884gddMywk6iLU=
+github.com/google/go-cmp v0.4.0 h1:xsAVV57WRhGj6kEIi8ReJzQlHHqcBYCElAvkovg3B/4=
 github.com/google/go-cmp v0.4.0/go.mod h1:v8dTdLbMG2kIc/vJvl+f65V22dbkXbowE6jgT/gNBxE=
 github.com/google/uuid v1.1.2 h1:EVhdT+1Kseyi1/pUmXKaFxYsDNy9RQYkMWRH68J/W7Y=
 github.com/google/uuid v1.1.2/go.mod h1:TIyPZe4MgqvfeYDBFedMoGGpEw/LqOeaOT+nhxU+yHo=
+github.com/takoyaki-3/go-csv-tag/v3 v3.0.2 h1:pQab6q6qolQMtP3aoGKPIQXu5AYFgLuIMGMsIWKd0HE=
+github.com/takoyaki-3/go-csv-tag/v3 v3.0.2/go.mod h1:9ZK/Ry0iZm5T+ihPuvYrWCJo5TkKnIbUx82RLSb1HoM=
+golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543 h1:E7g+9GITq07hpfrRu66IVDexMakfv52eLZ2CXBWiKr4=
 golang.org/x/xerrors v0.0.0-20191204190536-9bdfabe68543/go.mod h1:I/5z698sn9Ka8TeJc9MKroUUfqBBauWjQqLJ2OPfmY0=
 google.golang.org/protobuf v0.0.0-20200109180630-ec00e32a8dfd/go.mod h1:DFci5gLYBciE7Vtevhsrf46CRTquxDuWsQurQQe4oz8=
 google.golang.org/protobuf v0.0.0-20200221191635-4d8936d0db64/go.mod h1:kwYJMbMJ01Woi6D6+Kah6886xMZcty6N08ah7+eCXa0=
