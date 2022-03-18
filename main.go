@@ -272,7 +272,7 @@ func initialization() {
 	})
 	fields = append(fields, Table{
 		Name: "trips",
-		Columns: []string{"trip_id", "route_id", "service_id", "trip_headsign", "trip_short_name", "directon_id", "block_id", "shape_id", "wheelchair_accesible", "bikes_allowed"},
+		Columns: []string{"trip_id", "route_id", "service_id", "trip_headsign", "trip_short_name", "directon_id", "block_id", "shape_id", "wheelchair_accesible", "bikes_allowed","busyohou"},
 	})
 	fields = append(fields, Table{
 		Name: "stops",
@@ -344,7 +344,7 @@ func initialization_jp() {
 	})
 	fields = append(fields, Table{
 		Name: "trips",
-		Columns: []string{"trip_id", "route_id", "service_id", "trip_headsign", "trip_short_name", "directon_id", "block_id", "shape_id", "wheelchair_accesible", "bikes_allowed", "jp_trip_desc", "jp_trip_desc_symbol", "jp_office_id"},
+		Columns: []string{"trip_id", "route_id", "service_id", "trip_headsign", "trip_short_name", "directon_id", "block_id", "shape_id", "wheelchair_accesible", "bikes_allowed", "jp_trip_desc", "jp_trip_desc_symbol", "jp_office_id", "busyohou"},
 	})
 	fields = append(fields, Table{
 		Name: "office_jp",
